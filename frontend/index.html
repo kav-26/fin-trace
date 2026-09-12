@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fin-Trace — AI Financial Investigation Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,600;8..60,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #12161C;
+    --bg-raised: #171C24;
+    --text: #E9E6DD;
+    --text-dim: #9BA3AE;
+    --gold: #C9A24B;
+    --slate: #5C7A88;
+    --border: #262B34;
+    --red: #C0654F;
+    --amber: #C9A24B;
+    --green: #6E8F6B;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    line-height: 1.6;
+  }
+
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 56px 24px 120px;
+  }
+
+  header {
+    margin-bottom: 48px;
+  }
+
+  .mark {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 600;
+    font-size: 34px;
+    margin: 0 0 10px;
+    letter-spacing: -0.01em;
+  }
+
+  .subhead {
+    color: var(--text-dim);
+    font-size: 15px;
+    max-width: 56ch;
+  }
+
+  .query-box {
+    margin-top: 32px;
+    border: 1px solid var(--border);
+    background: var(--bg-raised);
+    border-radius: 6px;
+    padding: 4px;
+    display: flex;
+    gap: 4px;
+  }
+
+  #question {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+    padding: 14px 16px;
+  }
+
+  #question::placeholder { color: var(--text-dim); }
+
+  button#run {
+    background: var(--gold);
+    color: #12161C;
+    border: none;
+    border-radius: 4px;
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0 22px;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  button#run:hover { opacity: 0.88; }
+  button#run:disabled { opacity: 0.5; cursor: default; }
+
+  .examples {
+    margin-top: 14px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .example-chip {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+  }
+  .example-chip:hover { border-color: var(--slate); color: var(--text); }
+
+  #status {
+    display: none;
+    margin-top: 40px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--slate);
+  }
+
+  .pulse {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    margin-right: 8px;
+    animation: pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }
+
+  #report {
+    display: none;
+    margin-top: 48px;
+  }
+
+  .section {
+    padding: 28px 0;
+    border-top: 1px solid var(--border);
+  }
+  .section:first-child { border-top: none; padding-top: 0; }
+
+  .section-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 14px;
+  }
+
+  .conclusion-text {
+    font-family: 'Source Serif 4', serif;
+    font-size: 21px;
+    line-height: 1.55;
+    color: var(--text);
+  }
+
+  .confidence-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-top: 20px;
+  }
+
+  .confidence-num {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 20px;
+    color: var(--gold);
+    font-weight: 600;
+    min-width: 48px;
+  }
+
+  .confidence-track {
+    flex: 1;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .confidence-fill {
+    height: 100%;
+    background: var(--gold);
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  .factor {
+    padding: 18px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .factor:last-child { border-bottom: none; }
+
+  .factor-name {
+    font-weight: 600;
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
+
+  .factor-explanation {
+    color: var(--text-dim);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .factor-evidence {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px;
+    color: var(--slate);
+    margin-top: 8px;
+  }
+
+  .reasoning-text, .gaps-text {
+    color: var(--text-dim);
+    font-size: 14.5px;
+    line-height: 1.7;
+  }
+
+  .flag {
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--red);
+    background: var(--bg-raised);
+    padding: 14px 16px;
+    border-radius: 0 4px 4px 0;
+    margin-bottom: 10px;
+  }
+  .flag.medium { border-left-color: var(--amber); }
+  .flag.low { border-left-color: var(--green); }
+
+  .flag-severity {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    color: var(--red);
+    margin-bottom: 6px;
+  }
+  .flag.medium .flag-severity { color: var(--amber); }
+  .flag.low .flag-severity { color: var(--green); }
+
+  .flag-text { font-size: 14px; }
+  .flag-meta { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+  .no-issues {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+    color: var(--green);
+  }
+
+  .graph-img {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: #fff;
+    margin-top: 8px;
+  }
+
+  details {
+    margin-top: 0;
+  }
+
+  summary {
+    cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--slate);
+    user-select: none;
+  }
+
+  .finding {
+    margin-top: 18px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+  }
+
+  .finding-q {
+    font-weight: 600;
+    font-size: 13.5px;
+    margin-bottom: 8px;
+  }
+
+  .finding-a {
+    color: var(--text-dim);
+    font-size: 13.5px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+  }
+
+  #error {
+    display: none;
+    margin-top: 32px;
+    border: 1px solid var(--red);
+    background: rgba(192, 101, 79, 0.08);
+    padding: 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: var(--red);
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="mark">FIN-TRACE</div>
+    <h1>AI Financial Investigation Engine</h1>
+    <p class="subhead">Ask why a company's financial performance changed. Fin-Trace plans an investigation, retrieves evidence from its filings, checks for contradictions, and returns a grounded, cited conclusion.</p>
+
+    <div class="query-box">
+      <input type="text" id="question" placeholder="Why did Tesla's net income rise despite falling margins in 2023?">
+      <button id="run" onclick="investigate()">Investigate</button>
+    </div>
+    <div class="examples">
+      <button class="example-chip" onclick="setQuestion(this)">Why did Microsoft's profitability change in fiscal year 2023?</button>
+      <button class="example-chip" onclick="setQuestion(this)">Why did Tesla's net income rise despite falling margins in 2023?</button>
+    </div>
+  </header>
+
+  <div id="status"><span class="pulse"></span><span id="status-text">Planning investigation…</span></div>
+  <div id="error"></div>
+  <div id="report"></div>
+</div>
+
+<script>
+  const API_URL = "http://127.0.0.1:8000";
+
+  function setQuestion(el) {
+    document.getElementById('question').value = el.textContent;
+  }
+
+  async function investigate() {
+    const question = document.getElementById('question').value.trim();
+    if (!question) return;
+
+    const runBtn = document.getElementById('run');
+    const status = document.getElementById('status');
+    const statusText = document.getElementById('status-text');
+    const report = document.getElementById('report');
+    const error = document.getElementById('error');
+
+    runBtn.disabled = true;
+    error.style.display = 'none';
+    report.style.display = 'none';
+    status.style.display = 'block';
+
+    const messages = [
+      "Planning investigation…",
+      "Retrieving evidence from filings…",
+      "Checking for contradictions…",
+      "Synthesizing report…"
+    ];
+    let i = 0;
+    statusText.textContent = messages[0];
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      statusText.textContent = messages[i];
+    }, 3500);
+
+    try {
+      const res = await fetch(`${API_URL}/investigate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const data = await res.json();
+
+      clearInterval(interval);
+      status.style.display = 'none';
+      renderReport(data);
+      report.style.display = 'block';
+
+    } catch (err) {
+      clearInterval(interval);
+      status.style.display = 'none';
+      error.textContent = `Investigation failed: ${err.message}. Confirm the API is running at ${API_URL}.`;
+      error.style.display = 'block';
+    } finally {
+      runBtn.disabled = false;
+    }
+  }
+
+  function renderReport(data) {
+    const r = data.report;
+    const contradiction = data.contradictions || {};
+
+    let html = '';
+
+    // Conclusion
+    html += `
+      <div class="section">
+        <div class="section-label">CONCLUSION</div>
+        <div class="conclusion-text">${r.conclusion}</div>
+        <div class="confidence-row">
+          <div class="confidence-num">${r.confidence ?? '—'}%</div>
+          <div class="confidence-track"><div class="confidence-fill" style="width:${r.confidence ?? 0}%"></div></div>
+        </div>
+      </div>
+    `;
+
+    // Key factors
+    html += `<div class="section"><div class="section-label">KEY FACTORS</div>`;
+    (r.key_factors || []).forEach(kf => {
+      html += `
+        <div class="factor">
+          <div class="factor-name">${kf.factor || ''}</div>
+          <div class="factor-explanation">${kf.explanation || ''}</div>
+          <div class="factor-evidence">SOURCE — ${kf.evidence_source || ''}</div>
+        </div>
+      `;
+    });
+    html += `</div>`;
+
+    // Reasoning
+    html += `
+      <div class="section">
+        <div class="section-label">REASONING CHAIN</div>
+        <div class="reasoning-text">${r.reasoning_chain || ''}</div>
+      </div>
+    `;
+
+    // Detected inconsistencies (dedicated agent)
+    html += `<div class="section"><div class="section-label">DETECTED INCONSISTENCIES</div>`;
+    if (contradiction.contradictions_found && contradiction.contradictions.length) {
+      contradiction.contradictions.forEach(c => {
+        const sev = (c.severity || 'low').toLowerCase();
+        html += `
+          <div class="flag ${sev}">
+            <div class="flag-severity">${sev.toUpperCase()} SEVERITY</div>
+            <div class="flag-text">${c.conflict || ''}</div>
+            <div class="flag-meta">${c.finding_a || ''} vs ${c.finding_b || ''}</div>
+          </div>
+        `;
+      });
+    } else {
+      html += `<div class="no-issues">No contradictions detected across findings.</div>`;
+    }
+    html += `</div>`;
+
+    // Reviewer's own gaps
+    html += `
+      <div class="section">
+        <div class="section-label">GAPS IN EVIDENCE</div>
+        <div class="gaps-text">${r.contradictions_or_gaps || 'None identified.'}</div>
+      </div>
+    `;
+
+    // Knowledge graph
+    if (data.graph_image_url) {
+      html += `
+        <div class="section">
+          <div class="section-label">KNOWLEDGE GRAPH</div>
+          <img class="graph-img" src="${API_URL}${data.graph_image_url}?t=${Date.now()}" alt="Knowledge graph of causal relationships">
+        </div>
+      `;
+    }
+
+    // Raw findings
+    html += `
+      <div class="section">
+        <details>
+          <summary>SHOW RAW SUB-QUESTION FINDINGS (${(data.findings || []).length})</summary>
+    `;
+    (data.findings || []).forEach(f => {
+      html += `
+        <div class="finding">
+          <div class="finding-q">${f.sub_question}</div>
+          <div class="finding-a">${f.answer}</div>
+        </div>
+      `;
+    });
+    html += `</details></div>`;
+
+    document.getElementById('report').innerHTML = html;
+  }
+
+  document.getElementById('question').addEventListener('keydown', e => {
+    if (e.key === 'Enter') investigate();
+  });
+</script>
+
+</body>
+</html>
