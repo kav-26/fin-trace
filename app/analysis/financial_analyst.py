@@ -4,17 +4,29 @@ Computes derived financial metrics (YoY change, margins) from structured
 data using Pandas — actual math, not LLM-recited numbers.
 """
 
+import json
 from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 FINANCIAL_DATA_DIR = PROJECT_ROOT / "data" / "financial"
+COMPANIES_CONFIG_PATH = PROJECT_ROOT / "data" / "companies.json"
 
-CURRENT_COMPANY = "tsla"  # <-- change this to switch companies: "msft" or "tsla"
+
+def get_current_company() -> str:
+    """Read the currently active company ID from the registry."""
+    with open(COMPANIES_CONFIG_PATH) as f:
+        config = json.load(f)
+    return config["current"]
+
 
 def load_financial_data() -> pd.DataFrame:
     """Load the structured financial data CSV for the current company."""
-    path = FINANCIAL_DATA_DIR / f"{CURRENT_COMPANY}_financials.csv"
+    with open(COMPANIES_CONFIG_PATH) as f:
+        config = json.load(f)
+    company_id = config["current"]
+    csv_filename = config["companies"][company_id]["financial_csv"]
+    path = FINANCIAL_DATA_DIR / csv_filename
     return pd.read_csv(path)
 
 
@@ -55,6 +67,7 @@ def analyze() -> dict:
     margins = compute_margins(df)
 
     return {
+        "company": get_current_company(),
         "yoy_table": df_with_changes.to_dict(orient="records"),
         "margins": margins
     }
@@ -81,5 +94,5 @@ def format_for_llm(analysis: dict) -> str:
 if __name__ == "__main__":
     analysis = analyze()
 
-    print("\n📊 Financial Analysis (computed via Pandas)\n")
+    print(f"\n📊 Financial Analysis for {analysis['company'].upper()} (computed via Pandas)\n")
     print(format_for_llm(analysis))

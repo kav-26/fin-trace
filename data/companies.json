@@ -1,0 +1,17 @@
+{
+  "current": "msft",
+  "companies": {
+    "msft": {
+      "label": "Microsoft Corporation",
+      "ticker": "MSFT",
+      "pdf": "MSFT_FY23Q4_10K.pdf",
+      "financial_csv": "msft_financials.csv"
+    },
+    "tsla": {
+      "label": "Tesla, Inc.",
+      "ticker": "TSLA",
+      "pdf": "tsla-20231231-gen.pdf",
+      "financial_csv": "tsla_financials.csv"
+    }
+  }
+}

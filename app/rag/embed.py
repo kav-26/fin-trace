@@ -4,6 +4,7 @@ Converts document chunks into vectors and builds a searchable FAISS index.
 """
 
 import os
+import json
 import pickle
 from pathlib import Path
 from dotenv import load_dotenv
@@ -19,12 +20,30 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 INDEX_DIR = PROJECT_ROOT / "data" / "index"
 INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
-FAISS_INDEX_PATH = INDEX_DIR / "fin_trace.index"
-METADATA_PATH = INDEX_DIR / "fin_trace_metadata.pkl"
+COMPANIES_CONFIG_PATH = PROJECT_ROOT / "data" / "companies.json"
+
+
+def get_current_company() -> str:
+    """Read the currently active company ID from the registry."""
+    with open(COMPANIES_CONFIG_PATH) as f:
+        config = json.load(f)
+    return config["current"]
+
+
+def get_index_paths(company_id: str = None):
+    """Get the FAISS index + metadata paths for a specific company (or current if unspecified)."""
+    if company_id is None:
+        company_id = get_current_company()
+    return (
+        INDEX_DIR / f"{company_id}_fin_trace.index",
+        INDEX_DIR / f"{company_id}_fin_trace_metadata.pkl",
+    )
 
 
 def build_vector_store(chunks: list[dict]):
     """Embed all chunks and build a FAISS index. Saves index + metadata to disk."""
+    faiss_index_path, metadata_path = get_index_paths()
+
     embeddings_model = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2")
 
     texts = [chunk["text"] for chunk in chunks]
@@ -37,24 +56,29 @@ def build_vector_store(chunks: list[dict]):
     index = faiss.IndexFlatL2(dimension)
     index.add(vectors_np)
 
-    faiss.write_index(index, str(FAISS_INDEX_PATH))
-    with open(METADATA_PATH, "wb") as f:
+    faiss.write_index(index, str(faiss_index_path))
+    with open(metadata_path, "wb") as f:
         pickle.dump(chunks, f)
 
     print(f"✅ FAISS index built: {index.ntotal} vectors, dimension {dimension}")
-    print(f"✅ Saved index to {FAISS_INDEX_PATH}")
-    print(f"✅ Saved metadata to {METADATA_PATH}")
+    print(f"✅ Saved index to {faiss_index_path}")
+    print(f"✅ Saved metadata to {metadata_path}")
 
     return index, chunks
 
 
 def load_vector_store():
-    """Load a previously built FAISS index + its metadata."""
-    if not FAISS_INDEX_PATH.exists():
-        raise FileNotFoundError("No FAISS index found. Run build_vector_store() first.")
+    """Load the previously built FAISS index + its metadata for the current company."""
+    faiss_index_path, metadata_path = get_index_paths()
 
-    index = faiss.read_index(str(FAISS_INDEX_PATH))
-    with open(METADATA_PATH, "rb") as f:
+    if not faiss_index_path.exists():
+        raise FileNotFoundError(
+            f"No FAISS index found for current company ({get_current_company()}). "
+            f"Run build_vector_store() first."
+        )
+
+    index = faiss.read_index(str(faiss_index_path))
+    with open(metadata_path, "rb") as f:
         chunks = pickle.load(f)
 
     return index, chunks
@@ -84,6 +108,8 @@ def search(query: str, k: int = 5):
 
 
 if __name__ == "__main__":
+    print(f"📌 Building index for current company: {get_current_company().upper()}")
+
     docs = load_all_documents()
     chunks = chunk_documents(docs)
 
